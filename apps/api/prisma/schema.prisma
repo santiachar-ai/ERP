@@ -410,3 +410,13 @@ model AuditEvent {
   user          User           @relation(fields: [userId], references: [id])
   deliveryNote  DeliveryNote?  @relation(fields: [deliveryNoteId], references: [id])
 }
+
+model CostConfiguration {
+  id                String   @id @default(cuid())
+  key               String   @unique
+  paramsJson        String
+  purchaseRulesJson String
+  salesRulesJson    String
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}

@@ -1,5 +1,6 @@
 import { Router } from "express";
 
+import { costsRouter } from "../modules/costs/costs.routes";
 import { deliveryNoteRouter } from "../modules/delivery-notes/delivery-note.routes";
 import { mastersRouter } from "../modules/masters/masters.routes";
 import { stockRouter } from "../modules/stock/stock.routes";
@@ -16,6 +17,7 @@ apiRouter.get("/", (_req, res) => {
 });
 
 apiRouter.use("/health", healthRouter);
+apiRouter.use(costsRouter);
 apiRouter.use(mastersRouter);
 apiRouter.use(deliveryNoteRouter);
 apiRouter.use(stockRouter);

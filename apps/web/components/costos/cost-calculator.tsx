@@ -166,6 +166,15 @@ const PURCHASE_PRODUCTS = [
 const SALES_TYPES = ["PRODUCTO", "SERVICIO", "ACCESORIO", "OTROS"];
 type CostView = "calculo" | "imputacion";
 
+type CostConfigurationPayload = {
+  params: CostParams | null;
+  purchaseRules: PurchaseRule[];
+  salesRules: SalesRule[];
+};
+
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:3001/api";
+
 const DEFAULT_PARAMS: CostParams = {
   concentracionOptiblue: 0.325,
   concentracionIndustrial: 0.46,
@@ -353,6 +362,29 @@ function parseStoredWorkbook(payload: string | null) {
       cellDates: true,
     }),
   };
+}
+
+async function fetchCostConfiguration() {
+  const response = await fetch(`${API_BASE_URL}/costs/configuration`, {
+    cache: "no-store",
+  });
+  if (!response.ok) throw new Error("No se pudo leer configuracion de costos.");
+  return (await response.json()) as CostConfigurationPayload;
+}
+
+async function persistCostConfiguration(payload: CostConfigurationPayload) {
+  const response = await fetch(`${API_BASE_URL}/costs/configuration`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      params: payload.params ?? DEFAULT_PARAMS,
+      purchaseRules: payload.purchaseRules,
+      salesRules: payload.salesRules,
+    }),
+  });
+  if (!response.ok) throw new Error("No se pudo guardar configuracion de costos.");
 }
 
 function isDateLike(value: unknown) {
@@ -870,47 +902,89 @@ export function CostCalculator() {
   const [customPurchaseRules, setCustomPurchaseRules] = useState<PurchaseRule[]>([]);
   const [customSalesRules, setCustomSalesRules] = useState<SalesRule[]>([]);
   const [activeView, setActiveView] = useState<CostView>("calculo");
+  const [configurationLoaded, setConfigurationLoaded] = useState(false);
+  const [configurationSource, setConfigurationSource] = useState<"api" | "local">("local");
 
   useEffect(() => {
-    const saved = window.localStorage.getItem(STORAGE_KEY);
-    const savedPurchaseRules = window.localStorage.getItem(PURCHASE_RULES_STORAGE_KEY);
-    const savedSalesRules = window.localStorage.getItem(SALES_RULES_STORAGE_KEY);
-    const savedPurchaseFile = window.localStorage.getItem(PURCHASE_FILE_STORAGE_KEY);
-    const savedSalesFile = window.localStorage.getItem(SALES_FILE_STORAGE_KEY);
-    try {
-      if (saved) setParams({ ...DEFAULT_PARAMS, ...JSON.parse(saved) });
-      if (savedPurchaseRules) setCustomPurchaseRules(JSON.parse(savedPurchaseRules));
-      if (savedSalesRules) setCustomSalesRules(JSON.parse(savedSalesRules));
-      const purchaseFile = parseStoredWorkbook(savedPurchaseFile);
-      if (purchaseFile) {
-        setPurchasesWorkbook(purchaseFile.workbook);
-        setPurchasesFileName(purchaseFile.fileName);
+    let ignore = false;
+
+    async function loadConfiguration() {
+      const saved = window.localStorage.getItem(STORAGE_KEY);
+      const savedPurchaseRules = window.localStorage.getItem(PURCHASE_RULES_STORAGE_KEY);
+      const savedSalesRules = window.localStorage.getItem(SALES_RULES_STORAGE_KEY);
+      const savedPurchaseFile = window.localStorage.getItem(PURCHASE_FILE_STORAGE_KEY);
+      const savedSalesFile = window.localStorage.getItem(SALES_FILE_STORAGE_KEY);
+
+      try {
+        if (saved) setParams({ ...DEFAULT_PARAMS, ...JSON.parse(saved) });
+        if (savedPurchaseRules) setCustomPurchaseRules(JSON.parse(savedPurchaseRules));
+        if (savedSalesRules) setCustomSalesRules(JSON.parse(savedSalesRules));
+
+        const purchaseFile = parseStoredWorkbook(savedPurchaseFile);
+        if (purchaseFile) {
+          setPurchasesWorkbook(purchaseFile.workbook);
+          setPurchasesFileName(purchaseFile.fileName);
+        }
+        const salesFile = parseStoredWorkbook(savedSalesFile);
+        if (salesFile) {
+          setSalesWorkbook(salesFile.workbook);
+          setSalesFileName(salesFile.fileName);
+        }
+      } catch {
+        window.localStorage.removeItem(STORAGE_KEY);
+        window.localStorage.removeItem(PURCHASE_RULES_STORAGE_KEY);
+        window.localStorage.removeItem(SALES_RULES_STORAGE_KEY);
+        window.localStorage.removeItem(PURCHASE_FILE_STORAGE_KEY);
+        window.localStorage.removeItem(SALES_FILE_STORAGE_KEY);
       }
-      const salesFile = parseStoredWorkbook(savedSalesFile);
-      if (salesFile) {
-        setSalesWorkbook(salesFile.workbook);
-        setSalesFileName(salesFile.fileName);
+
+      try {
+        const configuration = await fetchCostConfiguration();
+        if (ignore) return;
+        if (configuration.params) {
+          setParams({ ...DEFAULT_PARAMS, ...configuration.params });
+        }
+        setCustomPurchaseRules(configuration.purchaseRules ?? []);
+        setCustomSalesRules(configuration.salesRules ?? []);
+        setConfigurationSource("api");
+      } catch {
+        setConfigurationSource("local");
+      } finally {
+        if (!ignore) setConfigurationLoaded(true);
       }
-    } catch {
-      window.localStorage.removeItem(STORAGE_KEY);
-      window.localStorage.removeItem(PURCHASE_RULES_STORAGE_KEY);
-      window.localStorage.removeItem(SALES_RULES_STORAGE_KEY);
-      window.localStorage.removeItem(PURCHASE_FILE_STORAGE_KEY);
-      window.localStorage.removeItem(SALES_FILE_STORAGE_KEY);
     }
+
+    loadConfiguration();
+    return () => {
+      ignore = true;
+    };
   }, []);
 
   useEffect(() => {
+    if (!configurationLoaded) return;
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(params));
-  }, [params]);
+  }, [configurationLoaded, params]);
 
   useEffect(() => {
+    if (!configurationLoaded) return;
     window.localStorage.setItem(PURCHASE_RULES_STORAGE_KEY, JSON.stringify(customPurchaseRules));
-  }, [customPurchaseRules]);
+  }, [configurationLoaded, customPurchaseRules]);
 
   useEffect(() => {
+    if (!configurationLoaded) return;
     window.localStorage.setItem(SALES_RULES_STORAGE_KEY, JSON.stringify(customSalesRules));
-  }, [customSalesRules]);
+  }, [configurationLoaded, customSalesRules]);
+
+  useEffect(() => {
+    if (!configurationLoaded) return;
+    persistCostConfiguration({
+      params,
+      purchaseRules: customPurchaseRules,
+      salesRules: customSalesRules,
+    })
+      .then(() => setConfigurationSource("api"))
+      .catch(() => setConfigurationSource("local"));
+  }, [configurationLoaded, customPurchaseRules, customSalesRules, params]);
 
   const purchaseRules = useMemo(
     () => [...customPurchaseRules, ...PURCHASE_RULES],
@@ -1016,6 +1090,9 @@ export function CostCalculator() {
             Importa compras y ventas del ERP. Los parametros y reglas base viven
             en la app para no depender de una planilla intermedia.
           </p>
+          <span className="config-status">
+            Configuracion: {configurationSource === "api" ? "base de datos" : "local"}
+          </span>
           {(purchasesFileName || salesFileName) ? (
             <button className="button-secondary compact-action" type="button" onClick={clearSavedFiles}>
               Borrar archivos guardados

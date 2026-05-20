@@ -720,6 +720,19 @@ th {
   width: fit-content;
 }
 
+.config-status {
+  display: inline-flex;
+  width: fit-content;
+  margin-top: 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--muted);
+  padding: 7px 11px;
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
 .config-head {
   display: flex;
   align-items: start;

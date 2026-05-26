@@ -1064,6 +1064,41 @@ export function CostCalculator() {
     window.localStorage.removeItem(SALES_FILE_STORAGE_KEY);
   }
 
+  function exportConfiguration() {
+    const payload = {
+      exportedAt: new Date().toISOString(),
+      version: 1,
+      params,
+      purchaseRules: customPurchaseRules,
+      salesRules: customSalesRules,
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], {
+      type: "application/json",
+    });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `configuracion-costos-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+  }
+
+  async function importConfiguration(file: File | undefined) {
+    if (!file) return;
+    try {
+      const payload = JSON.parse(await file.text()) as Partial<CostConfigurationPayload>;
+      setParams({ ...DEFAULT_PARAMS, ...(payload.params ?? {}) });
+      setCustomPurchaseRules(payload.purchaseRules ?? []);
+      setCustomSalesRules(payload.salesRules ?? []);
+      setConfigurationLoaded(true);
+      setError("");
+    } catch {
+      setError("No se pudo importar la configuracion de costos.");
+    }
+  }
+
   function savePurchaseRule(rule: PurchaseRule) {
     setCustomPurchaseRules((current) => [
       rule,
@@ -1110,6 +1145,19 @@ export function CostCalculator() {
             <strong>{salesFileName || "Seleccionar ventas"}</strong>
             <input accept=".xlsx,.xls" type="file" onChange={(event) => handleSales(event.target.files?.[0])} />
           </label>
+          <div className="config-transfer">
+            <button className="button-secondary" type="button" onClick={exportConfiguration}>
+              Exportar configuracion
+            </button>
+            <label className="button-secondary import-config-button">
+              Importar configuracion
+              <input
+                accept=".json,application/json"
+                type="file"
+                onChange={(event) => importConfiguration(event.target.files?.[0])}
+              />
+            </label>
+          </div>
         </div>
       </section>
 

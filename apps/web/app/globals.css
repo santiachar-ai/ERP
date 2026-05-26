@@ -657,6 +657,23 @@ th {
   gap: 12px;
 }
 
+.config-transfer {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.import-config-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.import-config-button input {
+  display: none;
+}
+
 .upload-zone span,
 .assumption span,
 .cost-kpi span {
@@ -987,6 +1004,10 @@ th {
 
   .cost-subnav button {
     flex: 1;
+  }
+
+  .config-transfer {
+    grid-template-columns: 1fr;
   }
 
   .config-head {

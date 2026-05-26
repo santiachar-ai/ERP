@@ -905,9 +905,12 @@ export function CostCalculator() {
   const [configurationLoaded, setConfigurationLoaded] = useState(false);
   const [configurationSource, setConfigurationSource] = useState<"api" | "local">("local");
   const [configurationExportFile, setConfigurationExportFile] = useState<{
+    content: string;
     fileName: string;
     url: string;
   } | null>(null);
+  const [configurationImportText, setConfigurationImportText] = useState("");
+  const [configurationTransferMessage, setConfigurationTransferMessage] = useState("");
 
   useEffect(() => {
     let ignore = false;
@@ -1082,28 +1085,54 @@ export function CostCalculator() {
       purchaseRules: customPurchaseRules,
       salesRules: customSalesRules,
     };
-    const blob = new Blob([JSON.stringify(payload, null, 2)], {
+    const content = JSON.stringify(payload, null, 2);
+    const blob = new Blob([content], {
       type: "application/json",
     });
     if (configurationExportFile) window.URL.revokeObjectURL(configurationExportFile.url);
     const url = window.URL.createObjectURL(blob);
     setConfigurationExportFile({
+      content,
       fileName: `configuracion-costos-${new Date().toISOString().slice(0, 10)}.json`,
       url,
     });
+    setConfigurationTransferMessage("Configuracion generada. Si la descarga no funciona, usa copiar.");
+  }
+
+  function applyConfigurationPayload(raw: string) {
+    const payload = JSON.parse(raw) as Partial<CostConfigurationPayload>;
+    setParams({ ...DEFAULT_PARAMS, ...(payload.params ?? {}) });
+    setCustomPurchaseRules(payload.purchaseRules ?? []);
+    setCustomSalesRules(payload.salesRules ?? []);
+    setConfigurationLoaded(true);
+    setError("");
+    setConfigurationTransferMessage("Configuracion importada.");
+  }
+
+  async function copyConfiguration() {
+    if (!configurationExportFile) return;
+    try {
+      await navigator.clipboard.writeText(configurationExportFile.content);
+      setConfigurationTransferMessage("Configuracion copiada.");
+    } catch {
+      setConfigurationTransferMessage("No pude copiar automaticamente. Selecciona el texto y copialo manualmente.");
+    }
   }
 
   async function importConfiguration(file: File | undefined) {
     if (!file) return;
     try {
-      const payload = JSON.parse(await file.text()) as Partial<CostConfigurationPayload>;
-      setParams({ ...DEFAULT_PARAMS, ...(payload.params ?? {}) });
-      setCustomPurchaseRules(payload.purchaseRules ?? []);
-      setCustomSalesRules(payload.salesRules ?? []);
-      setConfigurationLoaded(true);
-      setError("");
+      applyConfigurationPayload(await file.text());
     } catch {
       setError("No se pudo importar la configuracion de costos.");
+    }
+  }
+
+  function importConfigurationFromText() {
+    try {
+      applyConfigurationPayload(configurationImportText);
+    } catch {
+      setError("No se pudo importar el texto de configuracion.");
     }
   }
 
@@ -1167,12 +1196,43 @@ export function CostCalculator() {
             </label>
           </div>
           {configurationExportFile ? (
-            <div className="export-ready config-export-ready">
-              <span>{configurationExportFile.fileName}</span>
-              <a className="button" download={configurationExportFile.fileName} href={configurationExportFile.url}>
-                Descargar configuracion
-              </a>
+            <div className="config-export-ready">
+              <div className="export-ready">
+                <span>{configurationExportFile.fileName}</span>
+                <a className="button" download={configurationExportFile.fileName} href={configurationExportFile.url}>
+                  Descargar configuracion
+                </a>
+                <button className="button-secondary" type="button" onClick={copyConfiguration}>
+                  Copiar configuracion
+                </button>
+              </div>
+              <textarea
+                aria-label="Configuracion exportada"
+                className="config-textarea"
+                readOnly
+                value={configurationExportFile.content}
+              />
             </div>
+          ) : null}
+          <div className="config-import-text">
+            <textarea
+              aria-label="Pegar configuracion"
+              className="config-textarea"
+              onChange={(event) => setConfigurationImportText(event.target.value)}
+              placeholder="Pegar configuracion JSON"
+              value={configurationImportText}
+            />
+            <button
+              className="button-secondary"
+              disabled={!configurationImportText.trim()}
+              type="button"
+              onClick={importConfigurationFromText}
+            >
+              Importar texto
+            </button>
+          </div>
+          {configurationTransferMessage ? (
+            <p className="config-transfer-message">{configurationTransferMessage}</p>
           ) : null}
         </div>
       </section>

@@ -674,6 +674,37 @@ th {
   display: none;
 }
 
+.config-export-ready,
+.config-import-text {
+  display: grid;
+  gap: 10px;
+}
+
+.config-export-ready .export-ready {
+  align-items: stretch;
+  display: grid;
+}
+
+.config-textarea {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--ink);
+  font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+  font-size: 0.78rem;
+  min-height: 112px;
+  padding: 12px;
+  resize: vertical;
+  width: 100%;
+}
+
+.config-transfer-message {
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 700;
+  margin: 0;
+}
+
 .upload-zone span,
 .assumption span,
 .cost-kpi span {

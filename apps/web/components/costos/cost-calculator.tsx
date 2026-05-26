@@ -1547,7 +1547,19 @@ function AllocationAudit({
     XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(salesRows), "Ventas agrupadas");
     XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(purchaseDetailRows), "Detalle compras");
     XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(salesDetailRows), "Detalle ventas");
-    XLSX.writeFile(workbook, `imputacion-costos-${new Date().toISOString().slice(0, 10)}.xlsx`);
+
+    const bytes = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
+    const blob = new Blob([bytes], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `imputacion-costos-${new Date().toISOString().slice(0, 10)}.xlsx`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
   }
 
   return (

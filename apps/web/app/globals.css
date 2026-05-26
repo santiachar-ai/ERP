@@ -890,6 +890,13 @@ th {
   gap: 18px;
 }
 
+.audit-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
 .audit-head h2 {
   margin: 0 0 8px;
 }
@@ -971,6 +978,15 @@ th {
 
   .audit-head {
     display: grid;
+  }
+
+  .audit-actions {
+    justify-content: stretch;
+  }
+
+  .audit-actions .button,
+  .audit-actions .button-secondary {
+    width: 100%;
   }
 
   .report-action {

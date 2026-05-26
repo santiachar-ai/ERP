@@ -1483,6 +1483,73 @@ function AllocationAudit({
     salesRules.forEach(onSaveSale);
   }
 
+  function exportAllocations() {
+    const workbook = XLSX.utils.book_new();
+    const exportedAt = new Date().toLocaleString("es-AR");
+
+    const summaryRows = [
+      { Indicador: "Fecha exportacion", Valor: exportedAt },
+      { Indicador: "Compras leidas", Valor: model.review.compras },
+      { Indicador: "Compras para revisar", Valor: model.review.comprasRevisar },
+      { Indicador: "Ventas leidas", Valor: model.review.ventas },
+      { Indicador: "Ventas para revisar", Valor: model.review.ventasRevisar },
+      { Indicador: "Litros analizados", Valor: model.kpis.litrosTotales },
+      { Indicador: "Facturacion analizada", Valor: model.kpis.facturacionAnalizada },
+      { Indicador: "Resultado core", Valor: model.kpis.resultadoCore },
+    ];
+
+    const purchaseRows = purchaseAudit.map((row) => ({
+      Articulo: row.articulo,
+      Proveedor: row.proveedor || "",
+      Tipo: row.tipo,
+      Producto: row.producto,
+      Filas: row.count,
+      Total_Neto: row.total,
+      Estado: row.tipo === "REVISAR" ? "REVISAR" : "IMPUTADO",
+    }));
+
+    const salesRows = salesAudit.map((row) => ({
+      Articulo: row.articulo,
+      Tipo: row.tipo,
+      Producto: row.producto,
+      Filas: row.count,
+      Litros: row.litros,
+      Total_Neto: row.total,
+      Estado: row.tipo === "REVISAR" ? "REVISAR" : "IMPUTADO",
+    }));
+
+    const purchaseDetailRows = model.purchases.map((row) => ({
+      Comprobante: row.comprobante,
+      Articulo: row.articulo,
+      Proveedor: row.proveedor,
+      Cantidad: row.cantidad,
+      Precio_Unitario: row.precioUnitario,
+      Total_Neto: row.total,
+      Tipo: row.tipo,
+      Producto: row.producto,
+      Estado: row.tipo === "REVISAR" ? "REVISAR" : "IMPUTADO",
+    }));
+
+    const salesDetailRows = model.sales.map((row) => ({
+      Comprobante: row.comprobante,
+      Articulo: row.articulo,
+      Cliente: row.cliente,
+      Cantidad: row.cantidad,
+      Litros: row.litros,
+      Total_Neto: row.total,
+      Tipo: row.tipo,
+      Producto: row.producto,
+      Estado: row.revisar ? "REVISAR" : "IMPUTADO",
+    }));
+
+    XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(summaryRows), "Resumen");
+    XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(purchaseRows), "Compras agrupadas");
+    XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(salesRows), "Ventas agrupadas");
+    XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(purchaseDetailRows), "Detalle compras");
+    XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(salesDetailRows), "Detalle ventas");
+    XLSX.writeFile(workbook, `imputacion-costos-${new Date().toISOString().slice(0, 10)}.xlsx`);
+  }
+
   return (
     <section className="audit-section">
       <div className="audit-head">
@@ -1494,9 +1561,14 @@ function AllocationAudit({
             imputado cada articulo.
           </p>
         </div>
-        <button className="button" type="button" onClick={saveCurrentAllocations}>
-          Guardar imputaciones actuales
-        </button>
+        <div className="audit-actions">
+          <button className="button-secondary" type="button" onClick={exportAllocations}>
+            Exportar Excel
+          </button>
+          <button className="button" type="button" onClick={saveCurrentAllocations}>
+            Guardar imputaciones actuales
+          </button>
+        </div>
       </div>
 
       <div className="audit-grid">

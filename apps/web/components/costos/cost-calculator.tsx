@@ -904,6 +904,10 @@ export function CostCalculator() {
   const [activeView, setActiveView] = useState<CostView>("calculo");
   const [configurationLoaded, setConfigurationLoaded] = useState(false);
   const [configurationSource, setConfigurationSource] = useState<"api" | "local">("local");
+  const [configurationExportFile, setConfigurationExportFile] = useState<{
+    fileName: string;
+    url: string;
+  } | null>(null);
 
   useEffect(() => {
     let ignore = false;
@@ -985,6 +989,12 @@ export function CostCalculator() {
       .then(() => setConfigurationSource("api"))
       .catch(() => setConfigurationSource("local"));
   }, [configurationLoaded, customPurchaseRules, customSalesRules, params]);
+
+  useEffect(() => {
+    return () => {
+      if (configurationExportFile) window.URL.revokeObjectURL(configurationExportFile.url);
+    };
+  }, [configurationExportFile]);
 
   const purchaseRules = useMemo(
     () => [...customPurchaseRules, ...PURCHASE_RULES],
@@ -1075,14 +1085,12 @@ export function CostCalculator() {
     const blob = new Blob([JSON.stringify(payload, null, 2)], {
       type: "application/json",
     });
+    if (configurationExportFile) window.URL.revokeObjectURL(configurationExportFile.url);
     const url = window.URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `configuracion-costos-${new Date().toISOString().slice(0, 10)}.json`;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    window.URL.revokeObjectURL(url);
+    setConfigurationExportFile({
+      fileName: `configuracion-costos-${new Date().toISOString().slice(0, 10)}.json`,
+      url,
+    });
   }
 
   async function importConfiguration(file: File | undefined) {
@@ -1147,7 +1155,7 @@ export function CostCalculator() {
           </label>
           <div className="config-transfer">
             <button className="button-secondary" type="button" onClick={exportConfiguration}>
-              Exportar configuracion
+              Generar configuracion
             </button>
             <label className="button-secondary import-config-button">
               Importar configuracion
@@ -1158,6 +1166,14 @@ export function CostCalculator() {
               />
             </label>
           </div>
+          {configurationExportFile ? (
+            <div className="export-ready config-export-ready">
+              <span>{configurationExportFile.fileName}</span>
+              <a className="button" download={configurationExportFile.fileName} href={configurationExportFile.url}>
+                Descargar configuracion
+              </a>
+            </div>
+          ) : null}
         </div>
       </section>
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import * as XLSX from "xlsx";
 
 type RawRow = Record<string, unknown>;
@@ -911,6 +911,7 @@ export function CostCalculator() {
   } | null>(null);
   const [configurationImportText, setConfigurationImportText] = useState("");
   const [configurationTransferMessage, setConfigurationTransferMessage] = useState("");
+  const configurationExportTextRef = useRef<HTMLTextAreaElement | null>(null);
 
   useEffect(() => {
     let ignore = false;
@@ -1112,10 +1113,33 @@ export function CostCalculator() {
   async function copyConfiguration() {
     if (!configurationExportFile) return;
     try {
-      await navigator.clipboard.writeText(configurationExportFile.content);
-      setConfigurationTransferMessage("Configuracion copiada.");
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(configurationExportFile.content);
+        setConfigurationTransferMessage("Configuracion copiada.");
+        return;
+      }
+      throw new Error("Clipboard API unavailable");
     } catch {
-      setConfigurationTransferMessage("No pude copiar automaticamente. Selecciona el texto y copialo manualmente.");
+      const textArea = configurationExportTextRef.current;
+      if (!textArea) {
+        setConfigurationTransferMessage("No pude copiar automaticamente. Selecciona el texto y copialo manualmente.");
+        return;
+      }
+
+      textArea.focus();
+      textArea.select();
+      textArea.setSelectionRange(0, textArea.value.length);
+
+      try {
+        const copied = document.execCommand("copy");
+        setConfigurationTransferMessage(
+          copied
+            ? "Configuracion copiada."
+            : "No pude copiar automaticamente. El texto quedo seleccionado para copiarlo manualmente.",
+        );
+      } catch {
+        setConfigurationTransferMessage("No pude copiar automaticamente. El texto quedo seleccionado para copiarlo manualmente.");
+      }
     }
   }
 
@@ -1210,6 +1234,7 @@ export function CostCalculator() {
                 aria-label="Configuracion exportada"
                 className="config-textarea"
                 readOnly
+                ref={configurationExportTextRef}
                 value={configurationExportFile.content}
               />
             </div>

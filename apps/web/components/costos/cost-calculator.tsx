@@ -1381,6 +1381,17 @@ function AllocationAudit({
   onSavePurchase: (rule: PurchaseRule) => void;
   onSaveSale: (rule: SalesRule) => void;
 }) {
+  const [exportFile, setExportFile] = useState<{
+    fileName: string;
+    url: string;
+  } | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (exportFile) window.URL.revokeObjectURL(exportFile.url);
+    };
+  }, [exportFile]);
+
   const purchaseAudit = useMemo(() => {
     const grouped = new Map<
       string,
@@ -1552,14 +1563,12 @@ function AllocationAudit({
     const blob = new Blob([bytes], {
       type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     });
+    if (exportFile) window.URL.revokeObjectURL(exportFile.url);
     const url = window.URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `imputacion-costos-${new Date().toISOString().slice(0, 10)}.xlsx`;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    window.URL.revokeObjectURL(url);
+    setExportFile({
+      fileName: `imputacion-costos-${new Date().toISOString().slice(0, 10)}.xlsx`,
+      url,
+    });
   }
 
   return (
@@ -1575,13 +1584,22 @@ function AllocationAudit({
         </div>
         <div className="audit-actions">
           <button className="button-secondary" type="button" onClick={exportAllocations}>
-            Exportar Excel
+            Generar Excel
           </button>
           <button className="button" type="button" onClick={saveCurrentAllocations}>
             Guardar imputaciones actuales
           </button>
         </div>
       </div>
+
+      {exportFile ? (
+        <div className="export-ready">
+          <span>{exportFile.fileName}</span>
+          <a className="button" download={exportFile.fileName} href={exportFile.url}>
+            Descargar archivo generado
+          </a>
+        </div>
+      ) : null}
 
       <div className="audit-grid">
         <AuditTable

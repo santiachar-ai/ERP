@@ -897,6 +897,23 @@ th {
   justify-content: flex-end;
 }
 
+.export-ready {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.68);
+  padding: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.export-ready span {
+  color: var(--muted);
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
 .audit-head h2 {
   margin: 0 0 8px;
 }
@@ -985,8 +1002,14 @@ th {
   }
 
   .audit-actions .button,
-  .audit-actions .button-secondary {
+  .audit-actions .button-secondary,
+  .export-ready .button {
     width: 100%;
+  }
+
+  .export-ready {
+    align-items: stretch;
+    display: grid;
   }
 
   .report-action {

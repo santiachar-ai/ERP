@@ -1003,6 +1003,77 @@ th {
   font-weight: 700;
 }
 
+.master-section {
+  align-items: stretch;
+}
+
+.master-search {
+  display: grid;
+  gap: 6px;
+  min-width: min(100%, 320px);
+}
+
+.master-search span {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.master-search input,
+.master-add-row input,
+.master-add-row select,
+.master-table-wrap input,
+.master-table-wrap select {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.82);
+  color: var(--text);
+  padding: 9px 10px;
+}
+
+.master-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+  align-items: start;
+}
+
+.master-add-row {
+  display: grid;
+  gap: 10px;
+  margin: 14px 0;
+}
+
+.master-add-row.purchase {
+  grid-template-columns: minmax(180px, 1fr) minmax(150px, 0.8fr) minmax(130px, 0.55fr) minmax(145px, 0.55fr) auto;
+}
+
+.master-add-row.sales {
+  grid-template-columns: minmax(180px, 1fr) minmax(120px, 0.5fr) minmax(145px, 0.55fr) minmax(90px, 0.35fr) auto;
+}
+
+.master-table-wrap table {
+  min-width: 780px;
+}
+
+.master-table-wrap td {
+  vertical-align: middle;
+}
+
+.master-table-wrap input[type="checkbox"] {
+  height: 18px;
+  width: 18px;
+}
+
+.compact-table-action {
+  padding: 9px 11px;
+  white-space: nowrap;
+}
+
 @media (max-width: 960px) {
   .app-frame {
     grid-template-columns: 1fr;
@@ -1025,7 +1096,10 @@ th {
   .params-grid,
   .pending-grid,
   .pending-item,
-  .audit-grid {
+  .audit-grid,
+  .master-grid,
+  .master-add-row.purchase,
+  .master-add-row.sales {
     grid-template-columns: 1fr;
   }
 

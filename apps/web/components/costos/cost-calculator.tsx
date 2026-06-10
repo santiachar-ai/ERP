@@ -164,7 +164,7 @@ const PURCHASE_PRODUCTS = [
 ];
 
 const SALES_TYPES = ["PRODUCTO", "SERVICIO", "ACCESORIO", "OTROS"];
-type CostView = "calculo" | "imputacion";
+type CostView = "calculo" | "imputacion" | "maestro";
 
 type CostConfigurationPayload = {
   params: CostParams | null;
@@ -1176,6 +1176,22 @@ export function CostCalculator() {
     ]);
   }
 
+  function updatePurchaseRule(index: number, rule: PurchaseRule) {
+    setCustomPurchaseRules((current) => current.map((item, itemIndex) => (itemIndex === index ? rule : item)));
+  }
+
+  function updateSalesRule(index: number, rule: SalesRule) {
+    setCustomSalesRules((current) => current.map((item, itemIndex) => (itemIndex === index ? rule : item)));
+  }
+
+  function deletePurchaseRule(index: number) {
+    setCustomPurchaseRules((current) => current.filter((_, itemIndex) => itemIndex !== index));
+  }
+
+  function deleteSalesRule(index: number) {
+    setCustomSalesRules((current) => current.filter((_, itemIndex) => itemIndex !== index));
+  }
+
   return (
     <div className="costs-layout">
       <section className="costs-header">
@@ -1279,6 +1295,13 @@ export function CostCalculator() {
         >
           Imputacion de costos
         </button>
+        <button
+          className={activeView === "maestro" ? "active" : ""}
+          onClick={() => setActiveView("maestro")}
+          type="button"
+        >
+          Maestro de imputaciones
+        </button>
       </nav>
 
       {activeView === "calculo" ? (
@@ -1318,7 +1341,18 @@ export function CostCalculator() {
         </section>
       ) : null}
 
-      {!model ? (
+      {activeView === "maestro" ? (
+        <AllocationMaster
+          customPurchaseRules={customPurchaseRules}
+          customSalesRules={customSalesRules}
+          onAddPurchase={savePurchaseRule}
+          onAddSales={saveSalesRule}
+          onDeletePurchase={deletePurchaseRule}
+          onDeleteSales={deleteSalesRule}
+          onUpdatePurchase={updatePurchaseRule}
+          onUpdateSales={updateSalesRule}
+        />
+      ) : !model ? (
         <section className="empty-state costs-empty">
           <strong>Listo para calcular.</strong>
           <span>Carga compras y ventas del ERP para cruzar costos, litros y facturacion.</span>
@@ -1814,6 +1848,385 @@ function AuditTable({
                 ))}
               </tr>
             ))}
+          </tbody>
+        </table>
+      </div>
+    </article>
+  );
+}
+
+function AllocationMaster({
+  customPurchaseRules,
+  customSalesRules,
+  onAddPurchase,
+  onAddSales,
+  onDeletePurchase,
+  onDeleteSales,
+  onUpdatePurchase,
+  onUpdateSales,
+}: {
+  customPurchaseRules: PurchaseRule[];
+  customSalesRules: SalesRule[];
+  onAddPurchase: (rule: PurchaseRule) => void;
+  onAddSales: (rule: SalesRule) => void;
+  onDeletePurchase: (index: number) => void;
+  onDeleteSales: (index: number) => void;
+  onUpdatePurchase: (index: number, rule: PurchaseRule) => void;
+  onUpdateSales: (index: number, rule: SalesRule) => void;
+}) {
+  const [search, setSearch] = useState("");
+  const [newPurchaseRule, setNewPurchaseRule] = useState<PurchaseRule>({
+    articulo: "",
+    proveedor: "*",
+    tipo: "ADMIN",
+    producto: "Administracion",
+  });
+  const [newSalesRule, setNewSalesRule] = useState<SalesRule>({
+    articulo: "",
+    tipo: "PRODUCTO",
+    producto: "OPTIBLUE_IBC",
+    generaLitros: true,
+    factor: 1,
+  });
+
+  const purchaseProductOptions = [...PURCHASE_PRODUCTS, ...PRODUCT_ORDER].filter(
+    (option, index, options) => options.indexOf(option) === index,
+  );
+  const salesProductOptions = [...PRODUCT_ORDER, "IBC", "TARIMA", "TAMBOR", "OTROS"];
+  const normalizedSearch = key(search);
+  const matches = (values: string[]) =>
+    !normalizedSearch || values.some((value) => key(value).includes(normalizedSearch));
+
+  const manualPurchases = customPurchaseRules
+    .map((rule, index) => ({ index, rule }))
+    .filter(({ rule }) => matches([rule.articulo, rule.proveedor, rule.tipo, rule.producto]));
+  const basePurchases = PURCHASE_RULES.filter((rule) =>
+    matches([rule.articulo, rule.proveedor, rule.tipo, rule.producto]),
+  );
+  const manualSales = customSalesRules
+    .map((rule, index) => ({ index, rule }))
+    .filter(({ rule }) => matches([rule.articulo, rule.tipo, rule.producto]));
+  const baseSales = SALES_RULES.filter((rule) => matches([rule.articulo, rule.tipo, rule.producto]));
+
+  function addPurchaseRule() {
+    if (!newPurchaseRule.articulo.trim()) return;
+    onAddPurchase({
+      ...newPurchaseRule,
+      articulo: newPurchaseRule.articulo.trim(),
+      proveedor: newPurchaseRule.proveedor.trim() || "*",
+    });
+    setNewPurchaseRule({ articulo: "", proveedor: "*", tipo: "ADMIN", producto: "Administracion" });
+  }
+
+  function addSalesRule() {
+    if (!newSalesRule.articulo.trim()) return;
+    onAddSales({
+      ...newSalesRule,
+      articulo: newSalesRule.articulo.trim(),
+      generaLitros: newSalesRule.factor > 0,
+    });
+    setNewSalesRule({
+      articulo: "",
+      tipo: "PRODUCTO",
+      producto: "OPTIBLUE_IBC",
+      generaLitros: true,
+      factor: 1,
+    });
+  }
+
+  return (
+    <section className="audit-section master-section">
+      <div className="audit-head">
+        <div>
+          <p className="eyebrow">Maestro</p>
+          <h2>Maestro de imputaciones</h2>
+          <p>
+            Controla las reglas guardadas para compras y ventas sin depender de
+            los archivos cargados del mes.
+          </p>
+        </div>
+        <label className="master-search">
+          <span>Buscar</span>
+          <input
+            type="search"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Articulo, proveedor o cuenta"
+          />
+        </label>
+      </div>
+
+      <div className="master-grid">
+        <article className="table-card audit-card">
+          <h2>Compras manuales</h2>
+          <p>Reglas editables que se guardan para futuras importaciones.</p>
+          <div className="master-add-row purchase">
+            <input
+              aria-label="Articulo compra"
+              value={newPurchaseRule.articulo}
+              onChange={(event) => setNewPurchaseRule((current) => ({ ...current, articulo: event.target.value }))}
+              placeholder="Articulo"
+            />
+            <input
+              aria-label="Proveedor compra"
+              value={newPurchaseRule.proveedor}
+              onChange={(event) => setNewPurchaseRule((current) => ({ ...current, proveedor: event.target.value }))}
+              placeholder="Proveedor o *"
+            />
+            <select
+              value={newPurchaseRule.tipo}
+              onChange={(event) => setNewPurchaseRule((current) => ({ ...current, tipo: event.target.value }))}
+            >
+              {PURCHASE_TYPES.map((option) => (
+                <option key={option} value={option}>{option}</option>
+              ))}
+            </select>
+            <select
+              value={newPurchaseRule.producto}
+              onChange={(event) => setNewPurchaseRule((current) => ({ ...current, producto: event.target.value }))}
+            >
+              {purchaseProductOptions.map((option) => (
+                <option key={option} value={option}>{option}</option>
+              ))}
+            </select>
+            <button className="button" type="button" onClick={addPurchaseRule}>
+              Agregar
+            </button>
+          </div>
+          <div className="table-wrap audit-table-wrap master-table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Articulo</th>
+                  <th>Proveedor</th>
+                  <th>Tipo</th>
+                  <th>Producto</th>
+                  <th>Accion</th>
+                </tr>
+              </thead>
+              <tbody>
+                {manualPurchases.map(({ index, rule }) => (
+                  <tr key={`purchase-manual-${index}`}>
+                    <td>
+                      <input
+                        value={rule.articulo}
+                        onChange={(event) => onUpdatePurchase(index, { ...rule, articulo: event.target.value })}
+                      />
+                    </td>
+                    <td>
+                      <input
+                        value={rule.proveedor}
+                        onChange={(event) => onUpdatePurchase(index, { ...rule, proveedor: event.target.value })}
+                      />
+                    </td>
+                    <td>
+                      <select
+                        value={rule.tipo}
+                        onChange={(event) => onUpdatePurchase(index, { ...rule, tipo: event.target.value })}
+                      >
+                        {PURCHASE_TYPES.map((option) => (
+                          <option key={option} value={option}>{option}</option>
+                        ))}
+                      </select>
+                    </td>
+                    <td>
+                      <select
+                        value={rule.producto}
+                        onChange={(event) => onUpdatePurchase(index, { ...rule, producto: event.target.value })}
+                      >
+                        {purchaseProductOptions.map((option) => (
+                          <option key={option} value={option}>{option}</option>
+                        ))}
+                      </select>
+                    </td>
+                    <td>
+                      <button className="button-secondary compact-table-action" type="button" onClick={() => onDeletePurchase(index)}>
+                        Eliminar
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+                {manualPurchases.length === 0 ? (
+                  <tr>
+                    <td colSpan={5}>No hay reglas manuales de compra para esta busqueda.</td>
+                  </tr>
+                ) : null}
+              </tbody>
+            </table>
+          </div>
+        </article>
+
+        <article className="table-card audit-card">
+          <h2>Ventas manuales</h2>
+          <p>Mapeo editable entre articulos vendidos y productos de costo.</p>
+          <div className="master-add-row sales">
+            <input
+              aria-label="Articulo venta"
+              value={newSalesRule.articulo}
+              onChange={(event) => setNewSalesRule((current) => ({ ...current, articulo: event.target.value }))}
+              placeholder="Articulo"
+            />
+            <select
+              value={newSalesRule.tipo}
+              onChange={(event) => setNewSalesRule((current) => ({ ...current, tipo: event.target.value }))}
+            >
+              {SALES_TYPES.map((option) => (
+                <option key={option} value={option}>{option}</option>
+              ))}
+            </select>
+            <select
+              value={newSalesRule.producto}
+              onChange={(event) => setNewSalesRule((current) => ({ ...current, producto: event.target.value }))}
+            >
+              {salesProductOptions.map((option) => (
+                <option key={option} value={option}>{option}</option>
+              ))}
+            </select>
+            <input
+              aria-label="Factor litros venta"
+              type="number"
+              value={newSalesRule.factor}
+              onChange={(event) =>
+                setNewSalesRule((current) => ({ ...current, factor: num(event.target.value) }))
+              }
+            />
+            <button className="button" type="button" onClick={addSalesRule}>
+              Agregar
+            </button>
+          </div>
+          <div className="table-wrap audit-table-wrap master-table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Articulo</th>
+                  <th>Tipo</th>
+                  <th>Producto</th>
+                  <th>Factor</th>
+                  <th>Litros</th>
+                  <th>Accion</th>
+                </tr>
+              </thead>
+              <tbody>
+                {manualSales.map(({ index, rule }) => (
+                  <tr key={`sales-manual-${index}`}>
+                    <td>
+                      <input
+                        value={rule.articulo}
+                        onChange={(event) => onUpdateSales(index, { ...rule, articulo: event.target.value })}
+                      />
+                    </td>
+                    <td>
+                      <select
+                        value={rule.tipo}
+                        onChange={(event) => onUpdateSales(index, { ...rule, tipo: event.target.value })}
+                      >
+                        {SALES_TYPES.map((option) => (
+                          <option key={option} value={option}>{option}</option>
+                        ))}
+                      </select>
+                    </td>
+                    <td>
+                      <select
+                        value={rule.producto}
+                        onChange={(event) => onUpdateSales(index, { ...rule, producto: event.target.value })}
+                      >
+                        {salesProductOptions.map((option) => (
+                          <option key={option} value={option}>{option}</option>
+                        ))}
+                      </select>
+                    </td>
+                    <td>
+                      <input
+                        type="number"
+                        value={rule.factor}
+                        onChange={(event) => {
+                          const factor = num(event.target.value);
+                          onUpdateSales(index, { ...rule, factor, generaLitros: factor > 0 });
+                        }}
+                      />
+                    </td>
+                    <td>
+                      <input
+                        type="checkbox"
+                        checked={rule.generaLitros}
+                        onChange={(event) => onUpdateSales(index, { ...rule, generaLitros: event.target.checked })}
+                      />
+                    </td>
+                    <td>
+                      <button className="button-secondary compact-table-action" type="button" onClick={() => onDeleteSales(index)}>
+                        Eliminar
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+                {manualSales.length === 0 ? (
+                  <tr>
+                    <td colSpan={6}>No hay reglas manuales de venta para esta busqueda.</td>
+                  </tr>
+                ) : null}
+              </tbody>
+            </table>
+          </div>
+        </article>
+      </div>
+
+      <div className="master-grid">
+        <ReadOnlyRuleTable
+          columns={["Articulo", "Proveedor", "Tipo", "Producto"]}
+          rows={basePurchases.map((rule) => [rule.articulo, rule.proveedor, rule.tipo, rule.producto])}
+          title="Compras base"
+        />
+        <ReadOnlyRuleTable
+          columns={["Articulo", "Tipo", "Producto", "Factor", "Litros"]}
+          rows={baseSales.map((rule) => [
+            rule.articulo,
+            rule.tipo,
+            rule.producto,
+            number(rule.factor),
+            rule.generaLitros ? "Si" : "No",
+          ])}
+          title="Ventas base"
+        />
+      </div>
+    </section>
+  );
+}
+
+function ReadOnlyRuleTable({
+  title,
+  columns,
+  rows,
+}: {
+  title: string;
+  columns: string[];
+  rows: string[][];
+}) {
+  return (
+    <article className="table-card audit-card">
+      <h2>{title}</h2>
+      <p>Reglas incluidas en la app como referencia.</p>
+      <div className="table-wrap audit-table-wrap master-table-wrap">
+        <table>
+          <thead>
+            <tr>
+              {columns.map((column) => (
+                <th key={column}>{column}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row, rowIndex) => (
+              <tr key={`${title}-${rowIndex}`}>
+                {row.map((cell, cellIndex) => (
+                  <td key={`${title}-${rowIndex}-${cellIndex}`}>{cell}</td>
+                ))}
+              </tr>
+            ))}
+            {rows.length === 0 ? (
+              <tr>
+                <td colSpan={columns.length}>No hay reglas base para esta busqueda.</td>
+              </tr>
+            ) : null}
           </tbody>
         </table>
       </div>

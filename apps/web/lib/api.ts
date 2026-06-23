@@ -5,6 +5,16 @@ import { DashboardData } from "./types";
 const defaultApiBaseUrl =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:3001/api";
 
+const emptyDashboardData: DashboardData = {
+  stockBalances: [],
+  stockMovements: [],
+  deliveryNotes: [],
+  customers: [],
+  products: [],
+  warehouses: [],
+  users: [],
+};
+
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${defaultApiBaseUrl}${path}`, {
     ...init,
@@ -27,15 +37,16 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export async function getDashboardData(): Promise<DashboardData> {
-  const [
-    stockBalances,
-    stockMovements,
-    deliveryNotes,
-    customers,
-    products,
-    warehouses,
-    users,
-  ] = await Promise.all([
+  try {
+    const [
+      stockBalances,
+      stockMovements,
+      deliveryNotes,
+      customers,
+      products,
+      warehouses,
+      users,
+    ] = await Promise.all([
       apiFetch<DashboardData["stockBalances"]>("/stock-balances"),
       apiFetch<DashboardData["stockMovements"]>("/stock-movements"),
       apiFetch<DashboardData["deliveryNotes"]>("/delivery-notes"),
@@ -45,13 +56,16 @@ export async function getDashboardData(): Promise<DashboardData> {
       apiFetch<DashboardData["users"]>("/users"),
     ]);
 
-  return {
-    stockBalances,
-    stockMovements,
-    deliveryNotes,
-    customers,
-    products,
-    warehouses,
-    users,
-  };
+    return {
+      stockBalances,
+      stockMovements,
+      deliveryNotes,
+      customers,
+      products,
+      warehouses,
+      users,
+    };
+  } catch {
+    return emptyDashboardData;
+  }
 }

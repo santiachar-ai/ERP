@@ -18,6 +18,7 @@ No empezar por pantallas o tablas sueltas, sino por:
 - `docs/stock-rules.md`: reglas compactas del módulo Stock y Depósitos.
 - `docs/sales-rules.md`: reglas compactas del módulo Ventas.
 - `docs/current-status.md`: estado actual del proyecto y próximo paso recomendado.
+- `docs/calculadora-costos-deploy.md`: guia para publicar la calculadora de costos como app web simple.
 
 ## Siguiente paso recomendado
 

@@ -25,6 +25,18 @@ URL para compartir:
 
 ## Deploy sugerido en Vercel
 
+Opcion rapida:
+
+[Deploy en Vercel](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fsantiachar-ai%2FERP&project-name=calculadora-costos&root-directory=apps%2Fweb&env=NEXT_PUBLIC_COSTS_CONFIG_MODE&envDescription=Usar%20local%20para%20que%20la%20calculadora%20funcione%20sin%20backend&envLink=https%3A%2F%2Fgithub.com%2Fsantiachar-ai%2FERP%2Fblob%2Fmain%2Fdocs%2Fcalculadora-costos-deploy.md)
+
+En el paso de variables, usar:
+
+```bash
+NEXT_PUBLIC_COSTS_CONFIG_MODE=local
+```
+
+Configuracion manual equivalente:
+
 1. Conectar el repo `santiachar-ai/ERP`.
 2. Configurar el proyecto con root directory `apps/web`.
 3. Build command: `npm run build`.
